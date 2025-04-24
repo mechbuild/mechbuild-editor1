@@ -1,0 +1,1 @@
+# Public assets (favicon, manifest etc.)

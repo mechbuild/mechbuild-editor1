@@ -1,0 +1,16 @@
+//auth/userList.json
+[
+    {
+      "username": "taner",
+      "role": "admin"
+    },
+    {
+      "username": "ayse",
+      "role": "engineer"
+    },
+    {
+      "username": "mehmet",
+      "role": "engineer"
+    }
+  ]
+  

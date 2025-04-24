@@ -1,0 +1,1 @@
+# Project assets (icons, images)
