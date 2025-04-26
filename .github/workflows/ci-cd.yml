@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongodb:
-        image: mongo:${{ env.MONGODB_VERSION }}
+        image: mongo:latest
         ports:
-          - ${{ env.MONGODB_PORT }}:${{ env.MONGODB_PORT }}
+          - 27017:27017
         options: >-
-          --health-cmd "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:${{ env.MONGODB_PORT }}/test --quiet"
+          --health-cmd "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -50,7 +50,7 @@ jobs:
         env:
           NODE_ENV: test
           JWT_SECRET: test-secret-key
-          MONGODB_URI: mongodb://localhost:${{ env.MONGODB_PORT }}/test
+          MONGODB_URI: mongodb://localhost:27017/test
           FRONTEND_URL: http://localhost:3000
 
   build:
