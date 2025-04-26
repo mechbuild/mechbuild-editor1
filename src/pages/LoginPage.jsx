@@ -1,87 +1,55 @@
-// src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser } from '../context/UserContext';
+import { useTranslation } from 'react-i18next';
+import { Container, Typography, Box, TextField, Button } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 
-export default function LoginPage() {
-  const [username, setUsername] = useState('');
+const LoginPage = () => {
+  const { t } = useTranslation();
+  const { login } = useAuth();
+  const { notify } = useNotification();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login } = useUser();
-  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setError('');
-
-    // Basic validation
-    if (!username || !password) {
-      setError('Lütfen tüm alanları doldurun');
-      return;
+    // TODO: Replace with real API call
+    if (email && password) {
+      login({ email });
+      notify(t('login') + ' ' + t('success'), 'success');
+    } else {
+      notify(t('login') + ' ' + t('error'), 'error');
     }
-
-    // For demo purposes, accept any non-empty credentials
-    // In a real app, you would validate against your backend
-    login({ username });
-    navigate('/');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Hesabınıza giriş yapın
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="username" className="sr-only">
-                Kullanıcı adı
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Kullanıcı adı"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Şifre
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Şifre"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Giriş Yap
-            </button>
-          </div>
+    <Container maxWidth="xs">
+      <Box sx={{ py: 8, textAlign: 'center' }}>
+        <Typography variant="h4" gutterBottom>{t('login')}</Typography>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Email"
+            type="email"
+            fullWidth
+            margin="normal"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+          <TextField
+            label="Password"
+            type="password"
+            fullWidth
+            margin="normal"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
+            {t('login')}
+          </Button>
         </form>
-      </div>
-    </div>
+      </Box>
+    </Container>
   );
-}
+};
+
+export default LoginPage;

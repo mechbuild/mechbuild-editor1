@@ -1,0 +1,82 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/backend/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: src/backend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: src/backend
+      run: npm ci
+      
+    - name: Run linting
+      working-directory: src/backend
+      run: npm run lint
+      
+    - name: Run tests
+      working-directory: src/backend
+      run: npm test
+      env:
+        NODE_ENV: test
+        MONGODB_URI: mongodb://localhost:27017/test
+        JWT_SECRET: test-secret
+        FRONTEND_URL: http://localhost:3000
+        
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      working-directory: src/backend
+      run: npm ci --production
+      
+    - name: Deploy to production
+      working-directory: src/backend
+      run: |
+        # Add your deployment commands here
+        # For example, using SSH to deploy to your server:
+        # ssh user@server "cd /path/to/app && git pull && npm install && pm2 restart app"
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }} 

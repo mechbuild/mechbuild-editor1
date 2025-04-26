@@ -1,0 +1,14 @@
+import React from 'react';
+
+export function AdminDashboard() {
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <h1 className="text-2xl font-bold mb-6">🛠️ Admin Dashboard</h1>
+      <ul className="space-y-2">
+        <li><a href="/project/:id/documents" className="text-blue-600">📎 Dökümanlar</a></li>
+        <li><a href="/project/:id/ai" className="text-blue-600">🤖 AI Konsolu</a></li>
+        <li><a href="/project/:id/outputs" className="text-blue-600">📤 Çıktılar</a></li>
+      </ul>
+    </div>
+  );
+}

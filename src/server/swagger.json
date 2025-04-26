@@ -1,0 +1,23 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "MechBuild Editor API",
+    "description": "API documentation for MechBuild Editor",
+    "version": "1.0.0"
+  },
+  "host": "localhost:5000",
+  "basePath": "/api",
+  "schemes": ["http"],
+  "paths": {
+    "/monitoring/metrics": {
+      "get": {
+        "summary": "Get system metrics",
+        "responses": {
+          "200": {
+            "description": "System metrics retrieved successfully"
+          }
+        }
+      }
+    }
+  }
+} 

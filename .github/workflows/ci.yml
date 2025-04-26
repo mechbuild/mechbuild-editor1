@@ -1,0 +1,134 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Run tests
+      run: npm test
+      env:
+        NODE_ENV: test
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        API_KEY: ${{ secrets.API_KEY }}
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v2
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+
+  security:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Run security audit
+      run: npm audit
+      
+    - name: Run dependency check
+      uses: dependency-check/Dependency-Check_Action@main
+      with:
+        project: 'Excel Analysis System'
+        path: '.'
+        format: 'HTML'
+        out: 'reports'
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v2
+      with:
+        name: dependency-check-report
+        path: reports
+
+  build:
+    needs: security
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build
+      run: npm run build
+      env:
+        NODE_ENV: production
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: build
+        path: |
+          dist/
+          package.json
+          package-lock.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: build
+        path: .
+    
+    - name: Deploy to production
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_KEY }}
+        script: |
+          cd /var/www/excel-analysis
+          git pull origin main
+          npm ci --production
+          pm2 restart excel-analysis
+      env:
+        NODE_ENV: production
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        API_KEY: ${{ secrets.API_KEY }}
+        MONGODB_URI: ${{ secrets.MONGODB_URI }} 

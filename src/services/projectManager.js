@@ -7,7 +7,10 @@ import { parseDXFFile } from "../services/dxfParser";
 import { askAIFromDXF } from "../services/askAIFromDXF";
 import { analyzeSpecFileAI } from "../services/normAnalyzer";
 import { useUser } from "../context/UserContext";
-import { createProjectStructure } from "../services/projectManager";
+import { createProjectStructure, validateProjectStructure, cleanupProject } from "../services/projectManager";
+import { AppError, handleError } from './errorHandler';
+import fs from 'fs';
+import path from 'path';
 
 export default function EditorLayout() {
   const { user, logout } = useUser();
@@ -192,4 +195,100 @@ Suggested Action: push: rfiOlustur`}
       </section>
     </div>
   );
+}
+
+export function createProjectStructure(projectName) {
+  try {
+    if (!projectName) {
+      throw new AppError('Proje adı gereklidir.', 'error', 400);
+    }
+
+    const safeName = projectName.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+    const baseDir = `/mnt/data/projects/${safeName}`;
+    const dirs = {
+      base: baseDir,
+      meta: path.join(baseDir, 'meta'),
+      drawings: path.join(baseDir, 'drawings'),
+      documents: path.join(baseDir, 'documents'),
+      reports: path.join(baseDir, 'reports'),
+      temp: path.join(baseDir, 'temp')
+    };
+
+    // Dizinleri oluştur
+    Object.values(dirs).forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
+
+    // Proje bilgilerini kaydet
+    const projectInfo = {
+      name: projectName,
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      version: '1.0.0',
+      status: 'active'
+    };
+
+    fs.writeFileSync(
+      path.join(dirs.meta, 'project_info.json'),
+      JSON.stringify(projectInfo, null, 2)
+    );
+
+    // ZIP dosyası yolu
+    const zipPath = path.join(dirs.base, `${safeName}.zip`);
+
+    return {
+      ...dirs,
+      zip: zipPath,
+      info: projectInfo
+    };
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+export function validateProjectStructure(projectPaths) {
+  try {
+    if (!projectPaths || typeof projectPaths !== 'object') {
+      throw new AppError('Geçersiz proje yapısı.', 'error', 400);
+    }
+
+    const requiredDirs = ['base', 'meta', 'drawings', 'documents', 'reports', 'temp'];
+    const missingDirs = requiredDirs.filter(dir => !projectPaths[dir] || !fs.existsSync(projectPaths[dir]));
+
+    if (missingDirs.length > 0) {
+      throw new AppError(`Eksik dizinler: ${missingDirs.join(', ')}`, 'error', 400);
+    }
+
+    // Proje bilgilerini kontrol et
+    const infoPath = path.join(projectPaths.meta, 'project_info.json');
+    if (!fs.existsSync(infoPath)) {
+      throw new AppError('Proje bilgileri dosyası bulunamadı.', 'error', 400);
+    }
+
+    return true;
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+export function cleanupProject(projectPaths) {
+  try {
+    if (!validateProjectStructure(projectPaths)) {
+      throw new AppError('Proje yapısı geçersiz.', 'error', 400);
+    }
+
+    // Geçici dosyaları temizle
+    const tempDir = projectPaths.temp;
+    if (fs.existsSync(tempDir)) {
+      fs.readdirSync(tempDir).forEach(file => {
+        fs.unlinkSync(path.join(tempDir, file));
+      });
+    }
+
+    return true;
+  } catch (err) {
+    return handleError(err);
+  }
 }

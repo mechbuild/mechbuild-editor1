@@ -1,152 +1,75 @@
-import React, { useState } from "react";
-import { pushHandler } from "../services/pushHandler";
-import FileUploader from "../components/FileUploader";
-import { analyzeFile } from "../services/fileAnalyzer";
-import { askAIFromFileAnalysis } from "../services/openai";
-import { parseDXFFile } from "../services/dxfParser";
-import { askAIFromDXF } from "../services/askAIFromDXF";
-import { analyzeSpecFileAI } from "../services/normAnalyzer";
+import React, { useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { AppError, handleError, errorTypes } from '../services/errorHandler';
 
-export default function EditorLayout() {
-  const [command, setCommand] = useState("");
-  const [result, setResult] = useState(null);
-  const [files, setFiles] = useState([
-    "BOQ.xlsx",
-    "sartname.docx",
-    "plan.pdf",
-    "fire_zone.dxf",
-  ]);
-  const [fileAnalysis, setFileAnalysis] = useState(null);
-  const [aiResponse, setAiResponse] = useState(null);
-  const [dxfInsight, setDxfInsight] = useState(null);
-  const [normInsight, setNormInsight] = useState(null);
+export default function FileUploader({ onFileUpload, onError }) {
+  const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
+    if (rejectedFiles.length > 0) {
+      const error = new AppError(
+        'Geçersiz dosya türü veya boyutu',
+        errorTypes.FILE,
+        400
+      );
+      onError(handleError(error));
+      return;
+    }
 
-  const handlePush = () => {
-    const response = pushHandler(command);
-    setResult(response);
-  };
-
-  const handleFileUpload = async (file) => {
-    setFiles((prev) => [...prev, file.name]);
-    const analysis = analyzeFile(file);
-    setFileAnalysis(analysis);
-    const aiInfo = await askAIFromFileAnalysis(analysis);
-    setAiResponse(aiInfo);
-
-    if (analysis.extension === "dxf") {
-      const dxfData = await parseDXFFile(file);
-      if (!dxfData.error) {
-        const aiDXF = await askAIFromDXF(dxfData);
-        setDxfInsight(aiDXF);
-      } else {
-        setDxfInsight("DXF analizi sırasında hata oluştu: " + dxfData.error);
+    if (acceptedFiles.length > 0) {
+      try {
+        onFileUpload(acceptedFiles[0]);
+      } catch (error) {
+        onError(handleError(error));
       }
-    } else {
-      setDxfInsight(null);
     }
+  }, [onFileUpload, onError]);
 
-    if (analysis.extension === "docx" && analysis.category.includes("Şartname")) {
-      const normAI = await analyzeSpecFileAI(analysis);
-      setNormInsight(normAI);
-    } else {
-      setNormInsight(null);
-    }
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/dxf': ['.dxf']
+    },
+    maxFiles: 1,
+    maxSize: 10 * 1024 * 1024 // 10MB
+  });
 
   return (
-    <div className="grid grid-cols-12 h-screen">
-      {/* Sidebar */}
-      <aside className="col-span-2 bg-gray-900 text-white p-4">
-        <h2 className="text-lg font-bold mb-4">📁 Proje Dosyaları</h2>
-        <ul className="space-y-2 text-sm">
-          {files.map((file, index) => (
-            <li key={index} className="hover:text-blue-400 cursor-pointer">
-              {file}
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      {/* Main Viewer */}
-      <main className="col-span-7 bg-gray-100 p-6 overflow-y-scroll">
-        <h1 className="text-xl font-bold mb-2">📄 Document Viewer</h1>
-        <div className="bg-white rounded-xl p-4 shadow-xl font-mono text-sm">
-          <pre>
-{`"KACIS HOLU" not found in SprinklerLayer.
-NFPA 13 standard requires sprinkler presence in exit corridors.
-Suggested Action: push: rfiOlustur`}
-          </pre>
-        </div>
-
-        <div className="mt-6">
-          <FileUploader onFileUpload={handleFileUpload} />
-        </div>
-      </main>
-
-      {/* AI Console */}
-      <section className="col-span-3 bg-white border-l p-4 flex flex-col">
-        <h2 className="text-lg font-semibold mb-2">🤖 AI Konsolu</h2>
-
-        {fileAnalysis && (
-          <div className="bg-yellow-50 p-3 rounded-md text-xs mb-4 border-l-4 border-yellow-500 text-yellow-700">
-            <p><strong>Yeni Dosya Yüklendi:</strong> {fileAnalysis.name}</p>
-            <p><strong>Tür:</strong> {fileAnalysis.category}</p>
-            <p><strong>Açıklama:</strong> {fileAnalysis.description}</p>
-            <p><strong>Boyut:</strong> {fileAnalysis.sizeKB} KB</p>
-          </div>
-        )}
-
-        {aiResponse && (
-          <div className="bg-green-50 p-3 rounded-md text-xs mb-4 border-l-4 border-green-500 text-green-700 whitespace-pre-wrap">
-            <p><strong>🧠 AI Açıklaması:</strong></p>
-            <p>{aiResponse}</p>
-          </div>
-        )}
-
-        {dxfInsight && (
-          <div className="bg-blue-50 p-3 rounded-md text-xs mb-4 border-l-4 border-blue-500 text-blue-700 whitespace-pre-wrap">
-            <p><strong>📐 DXF Teknik Yorum:</strong></p>
-            <p>{dxfInsight}</p>
-          </div>
-        )}
-
-        {normInsight && (
-          <div className="bg-purple-50 p-3 rounded-md text-xs mb-4 border-l-4 border-purple-500 text-purple-700 whitespace-pre-wrap">
-            <p><strong>📜 Norm Uyumu AI Açıklaması:</strong></p>
-            <p>{normInsight}</p>
-          </div>
-        )}
-
-        {result && (
-          <div
-            className={`bg-gray-100 p-3 rounded-md text-xs mb-4 border-l-4 ${
-              result.type === "error"
-                ? "border-red-500 text-red-700"
-                : result.type === "warning"
-                ? "border-yellow-500 text-yellow-700"
-                : result.type === "rfi"
-                ? "border-blue-500 text-blue-700"
-                : "border-green-500 text-green-700"
-            }`}
-          >
-            <p>{result.message}</p>
-          </div>
-        )}
-
-        <input
-          type="text"
-          placeholder="Komut gir (ör. push: hesapla)"
-          value={command}
-          onChange={(e) => setCommand(e.target.value)}
-          className="border rounded-md px-3 py-2 text-sm focus:outline-none"
-        />
-        <button
-          onClick={handlePush}
-          className="mt-3 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+    <div
+      {...getRootProps()}
+      className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
+        ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'}`}
+    >
+      <input {...getInputProps()} />
+      <div className="flex flex-col items-center justify-center space-y-2">
+        <svg
+          className="w-12 h-12 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          Çalıştır
-        </button>
-      </section>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
+        </svg>
+        {isDragActive ? (
+          <p className="text-blue-500 font-medium">Dosyayı buraya bırakın...</p>
+        ) : (
+          <>
+            <p className="text-gray-600 font-medium">
+              Dosyayı sürükleyip bırakın veya tıklayarak seçin
+            </p>
+            <p className="text-gray-500 text-sm">
+              PDF, DOCX, XLSX veya DXF dosyaları (max. 10MB)
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
-}
+} 

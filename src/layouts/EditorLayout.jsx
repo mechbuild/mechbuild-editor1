@@ -11,6 +11,8 @@ import { analyzeSpecFileAI } from "../services/normAnalyzer";
 import { useUser } from "../context/UserContext";
 import { createProjectStructure } from "../services/projectManager";
 import { uploadToDrive } from "../services/uploadToDrive";
+import { AppError, errorTypes } from "../utils/AppError";
+import { handleError } from "../utils/errorHandler";
 
 export default function EditorLayout() {
   const { user, logout } = useUser();
@@ -47,29 +49,41 @@ export default function EditorLayout() {
   };
 
   const handleFileUpload = async (file) => {
-    setFiles((prev) => [...prev, file.name]);
-    const analysis = analyzeFile(file);
-    setFileAnalysis(analysis);
-    const aiInfo = await askAIFromFileAnalysis(analysis, projectName);
-    setAiResponse(aiInfo);
+    try {
+      setFiles((prev) => [...prev, file.name]);
+      const analysis = analyzeFile(file);
+      setFileAnalysis(analysis);
+      
+      const aiInfo = await askAIFromFileAnalysis(analysis, projectName);
+      setAiResponse(aiInfo);
 
-    if (analysis.extension === "dxf") {
-      const dxfData = await parseDXFFile(file);
-      if (!dxfData.error) {
-        const aiDXF = await askAIFromDXF(dxfData, projectName);
-        setDxfInsight(aiDXF);
-      } else {
-        setDxfInsight("DXF analizi sırasında hata oluştu: " + dxfData.error);
+      if (analysis.extension === "dxf") {
+        try {
+          const dxfData = await parseDXFFile(file);
+          if (!dxfData.error) {
+            const aiDXF = await askAIFromDXF(dxfData, projectName);
+            setDxfInsight(aiDXF);
+          } else {
+            throw new AppError(dxfData.error, errorTypes.FILE);
+          }
+        } catch (error) {
+          setDxfInsight(handleError(error).message);
+        }
       }
-    } else {
-      setDxfInsight(null);
-    }
 
-    if (analysis.extension === "docx" && analysis.category.includes("Şartname")) {
-      const normAI = await analyzeSpecFileAI(analysis, projectName);
-      setNormInsight(normAI);
-    } else {
-      setNormInsight(null);
+      if (analysis.extension === "docx" && analysis.category.includes("Şartname")) {
+        try {
+          const normAI = await analyzeSpecFileAI(analysis, projectName);
+          setNormInsight(normAI);
+        } catch (error) {
+          setNormInsight(handleError(error).message);
+        }
+      }
+    } catch (error) {
+      setResult({
+        type: "error",
+        message: handleError(error).message
+      });
     }
   };
 
@@ -126,7 +140,13 @@ Suggested Action: push: rfiOlustur`}
         </div>
 
         <div className="mt-6">
-          <FileUploader onFileUpload={handleFileUpload} />
+          <FileUploader 
+            onFileUpload={handleFileUpload} 
+            onError={(error) => setResult({
+              type: error.type,
+              message: error.message
+            })}
+          />
         </div>
       </main>
 

@@ -1,38 +1,43 @@
-// src/App.jsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { UserProvider, useUser } from './context/UserContext.jsx';
-import HomePage from './pages/HomePage';
-import LoginPage from './pages/LoginPage';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+import MonitoringDashboard from './components/MonitoringDashboard';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 
-function AppRoutes() {
-  const { user } = useUser();
+import AdminDashboard from './pages/AdminDashboard';
+import AIConsolePage from './pages/AIConsolePage';
+import DocumentUploadPage from './pages/DocumentUploadPage';
+import OutputReportPage from './pages/OutputReportPage';
+import ProjectDetail from "./pages/ProjectDetail";
 
-  return (
-    <Routes>
-      {/* Public route: Login page */}
-      <Route path="/login" element={<LoginPage />} />
-      {/* Protected route: Home page (requires login) */}
-      <Route 
-        path="/" 
-        element={user ? <HomePage /> : <Navigate to="/login" replace />} 
-      />
-      {/* Catch-all route: redirect to appropriate page based on login status */}
-      <Route 
-        path="*" 
-        element={<Navigate to={user ? "/" : "/login"} replace />} 
-      />
-    </Routes>
-  );
-}
+const theme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#90caf9',
+    },
+    secondary: {
+      main: '#f48fb1',
+    },
+  },
+});
 
 function App() {
   return (
-    <UserProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </UserProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Routes>
+          <Route path="/project/:id/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/project/:id/ai" element={<ProtectedRoute><AIConsolePage /></ProtectedRoute>} />
+          <Route path="/project/:id/documents" element={<ProtectedRoute><DocumentUploadPage /></ProtectedRoute>} />
+          <Route path="/project/:id/outputs" element={<ProtectedRoute><OutputReportPage /></ProtectedRoute>} />
+          <Route path="/projects/:id" element={<ProjectDetail />} />
+          <Route path="/monitoring" element={<MonitoringDashboard />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 
