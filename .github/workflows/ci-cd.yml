@@ -97,8 +97,9 @@ jobs:
 
       - name: Deploy to Railway
         run: |
-          railway up --service a2d6a248-eefd-4500-b1bd-56debd7be372 --token ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }} railway up --service a2d6a248-eefd-4500-b1bd-56debd7be372
         env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_ENVIRONMENT: production
           NODE_ENV: production
