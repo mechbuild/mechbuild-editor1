@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Manual trigger da mümkün
+  workflow_dispatch:  # Manuel tetikleme için
 
 env:
   NODE_VERSION: '18'
@@ -95,16 +95,10 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Login to Railway
-        run: railway login --token ${{ secrets.RAILWAY_TOKEN }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
       - name: Deploy to Railway
         run: |
-          railway up --service a2d6a248-eefd-4500-b1bd-56debd7be372
+          railway up --service a2d6a248-eefd-4500-b1bd-56debd7be372 --token ${{ secrets.RAILWAY_TOKEN }}
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           RAILWAY_ENVIRONMENT: production
           NODE_ENV: production
